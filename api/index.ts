@@ -38,10 +38,11 @@ app.get("/search-blog", async (req, res) => {
 
 // For local development
 if (process.env.NODE_ENV !== "production") {
-  const PORT = process.env.PORT || 4000;
+  const PORT = process.env.PORT || 3000;
   const server = app.listen(PORT, () =>
     console.log(`Server ready on port ${server.address().port}.`)
   );
 }
 
 module.exports = app;
+
