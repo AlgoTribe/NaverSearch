@@ -1,39 +1,40 @@
 const express = require("express");
+const crypto = require("crypto");
 const axios = require("axios");
+require("dotenv").config();
+
 const app = express();
 
-app.get("/", (req, res) => res.send("Express on Vercel"));
+const API_KEY = process.env.NAVER_API_KEY;
+const API_SECRET = process.env.NAVER_API_SECRET;
+const CUSTOMER_ID = process.env.NAVER_CUSTOMER_ID;
 
-app.get("/get-directions", async (req, res) => {
-  const { start, goal, option } = req.query;
+function generateSignature(timestamp, method, uri) {
+  const signatureString = `${timestamp}.${method}.${uri}`;
+  return crypto.createHmac("sha256", API_SECRET).update(signatureString).digest("base64");
+}
 
-  console.log("Query parameters:", { start, goal, option });
+app.get("/", (req, res) => res.send("Naver Search Ads API Integration"));
 
-  const url = "https://naveropenapi.apigw.ntruss.com/map-direction/v1/driving";
+app.get("/campaigns", async (req, res) => {
+  const timestamp = Date.now().toString();
+  const method = "GET";
+  const uri = "/ncc/campaigns";
+  const baseUrl = "https://api.naver.com";
+
+  const signature = generateSignature(timestamp, method, uri);
+
   const headers = {
-    "X-NCP-APIGW-API-KEY-ID": process.env.NAVER_CLIENT_ID,
-    "X-NCP-APIGW-API-KEY": process.env.NAVER_CLIENT_SECRET,
+    "X-Timestamp": timestamp,
+    "X-API-KEY": API_KEY,
+    "X-Customer": CUSTOMER_ID,
+    "X-Signature": signature,
   };
 
-  console.log("Request URL:", url);
-  console.log("Request headers:", headers);
-
   try {
-    const response = await axios.get(url, {
-      params: { start, goal, option },
-      headers: headers,
-    });
-
-    console.log("Response status:", response.status);
-    console.log("Response data: ", response.data);
-    // console.log("Response data:", JSON.stringify(response.data, null, 2));
-
+    const response = await axios.get(`${baseUrl}${uri}`, { headers });
     res.status(200).json(response.data);
   } catch (error) {
-    console.error("Error:", error.message);
-    if (error.response) {
-      console.error("Error response:", error.response.data);
-    }
     res.status(error.response ? error.response.status : 500).json({
       error: error.message,
       details: error.response ? error.response.data : null,
@@ -41,12 +42,5 @@ app.get("/get-directions", async (req, res) => {
   }
 });
 
-// For local development
-if (process.env.NODE_ENV !== "production") {
-  const PORT = process.env.PORT || 0; // This will choose a random available port
-  const server = app.listen(PORT, () =>
-    console.log(`Server ready on port ${server.address().port}.`)
-  );
-}
-
-module.exports = app;
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
